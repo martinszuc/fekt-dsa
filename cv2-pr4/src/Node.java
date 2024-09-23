@@ -3,7 +3,7 @@ import java.util.List;
 
 class Node {
     private final String name;
-    private final List<Node> neighbors;  // List to store neighbors of the node
+    private final List<Node> neighbors;
 
     public Node(String name) {
         this.name = name;

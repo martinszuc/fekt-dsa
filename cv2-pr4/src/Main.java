@@ -1,6 +1,5 @@
 public class Main {
     public static void main(String[] args) {
-        // Create nodes (vertices)
         Node node1 = new Node("Node 1");
         Node node2 = new Node("Node 2");
         Node node3 = new Node("Node 3");

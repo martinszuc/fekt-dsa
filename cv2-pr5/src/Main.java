@@ -2,7 +2,6 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        // Define the start state of the puzzle (2D array)
         int[][] startState = {
                 {1, 0, 2},
                 {3, 4, 5},
@@ -25,7 +24,7 @@ public class Main {
             System.out.println("Enter a move (5 = up, 2 = down, 1 = left, 3 = right, 0 to quit): ");
             int move = scanner.nextInt();
             if (move == 0) {
-                break; // Quit the game
+                break; // quit
             }
 
             boolean moved = gameBoard.move(move);
@@ -36,7 +35,7 @@ public class Main {
                 // Check if the game is won
                 if (gameBoard.isSolved()) {
                     System.out.println("Congratulations! You've solved the puzzle!");
-                    break; // Exit the game after winning
+                    break;
                 }
             } else {
                 System.out.println("Invalid move! Try again.");

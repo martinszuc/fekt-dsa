@@ -1,16 +1,14 @@
 class Directory {
     private final String name;
-    private Directory left;  // Left subdirectory
-    private Directory right; // Right subdirectory
+    private Directory left;
+    private Directory right;
 
-    // Constructor to initialize the directory name
     public Directory(String name) {
         this.name = name;
         this.left = null;
         this.right = null;
     }
 
-    // Get and set methods for the left subdirectory
     public Directory getLeft() {
         return left;
     }

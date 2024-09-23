@@ -23,20 +23,20 @@ public class GameBoard {
         int newRow = emptyRow, newCol = emptyCol;
 
         switch (direction) {
-            case 5: // Move up
+            case 5: // up
                 newRow--;
                 break;
-            case 2: // Move down
+            case 2: // Mdown
                 newRow++;
                 break;
-            case 1: // Move left
+            case 1: // left
                 newCol--;
                 break;
-            case 3: // Move right
+            case 3: // right
                 newCol++;
                 break;
             default:
-                return false; // Invalid direction
+                return false; // invalid
         }
 
         if (newRow >= 0 && newRow < board.length && newCol >= 0 && newCol < board[0].length) {
@@ -46,22 +46,20 @@ public class GameBoard {
             emptyCol = newCol;
             return true;
         }
-        return false; // Move was out of bounds
+        return false; // invalid move
     }
 
-    // Check if the current board matches the goal state
     public boolean isSolved() {
         for (int i = 0; i < board.length; i++) {
             for (int j = 0; j < board[i].length; j++) {
                 if (board[i][j] != goalState[i][j]) {
-                    return false; // If any tile is not in the correct position
+                    return false;
                 }
             }
         }
-        return true; // All tiles are in the correct position
+        return true;
     }
 
-    // Method to print the current board state
     public void printBoard() {
         for (int[] row : board) {
             for (int tile : row) {
