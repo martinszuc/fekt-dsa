@@ -26,6 +26,19 @@ public class Individual {
     }
 
     /**
+     * Private copy constructor for creating an Individual with a list of polygons.
+     * Used in the copy method.
+     *
+     * @param polygons List of polygons to copy.
+     */
+    private Individual(List<Polygon> polygons) {
+        this.polygons = new ArrayList<>(polygons.size());
+        for (Polygon polygon : polygons) {
+            this.polygons.add(polygon.copy());
+        }
+    }
+
+    /**
      * Gets the list of polygons.
      *
      * @return List of Polygon objects.
@@ -69,21 +82,6 @@ public class Individual {
      * @return A new Individual object with copied polygons.
      */
     public Individual copy() {
-        Individual copy = new Individual(0);
-        for (Polygon polygon : this.polygons) {
-            Polygon newPolygon = new Polygon();
-            // Copy vertices
-            List<Point> originalVertices = polygon.getVertices();
-            for (Point p : originalVertices) {
-                newPolygon.getVertices().add(new Point(p.x, p.y));
-            }
-            // Copy color
-            newPolygon.setColor(new Color(polygon.getColor().getRed(),
-                    polygon.getColor().getGreen(),
-                    polygon.getColor().getBlue(),
-                    polygon.getColor().getAlpha()));
-            copy.getPolygons().add(newPolygon);
-        }
-        return copy;
+        return new Individual(this.polygons);
     }
 }

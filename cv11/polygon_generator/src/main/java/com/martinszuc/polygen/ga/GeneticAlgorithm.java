@@ -4,7 +4,9 @@ import com.martinszuc.polygen.utils.ImageUtils;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -15,26 +17,31 @@ public class GeneticAlgorithm {
     private final int populationSize;
     private final int numPolygons;
     private final double mutationRate;
-    private final List<Individual> population;
-    private Individual bestIndividual;
+    private List<Individual> population;
+    private final AtomicReference<Individual> bestIndividual = new AtomicReference<>(null);
     private final Random rand = new Random();
     private final AtomicBoolean running = new AtomicBoolean(true);
+
+    // ExecutorService for parallel processing
+    private final ExecutorService executor;
 
     /**
      * Constructor to initialize the genetic algorithm parameters.
      *
-     * @param targetImage   The image to approximate.
+     * @param targetImage    The image to approximate.
      * @param populationSize Number of individuals in the population.
-     * @param numPolygons   Number of polygons per individual.
-     * @param mutationRate  Mutation probability.
+     * @param numPolygons    Number of polygons per individual.
+     * @param mutationRate   Mutation probability.
+     * @param threadPoolSize Number of threads to use for parallel processing.
      */
-    public GeneticAlgorithm(BufferedImage targetImage, int populationSize, int numPolygons, double mutationRate) {
+    public GeneticAlgorithm(BufferedImage targetImage, int populationSize, int numPolygons, double mutationRate, int threadPoolSize) {
         this.targetImage = targetImage;
         this.populationSize = populationSize;
         this.numPolygons = numPolygons;
         this.mutationRate = mutationRate;
-        this.population = new ArrayList<>();
+        this.population = Collections.synchronizedList(new ArrayList<>());
         initializePopulation();
+        this.executor = Executors.newFixedThreadPool(threadPoolSize);
     }
 
     /**
@@ -48,21 +55,44 @@ public class GeneticAlgorithm {
     }
 
     /**
-     * Evaluates the fitness of all individuals in the population.
+     * Evaluates the fitness of all individuals in the population using parallel processing.
      */
-    private void evaluateFitness() {
-        for (Individual individual : population) {
-            BufferedImage generatedImage = ImageUtils.renderImage(individual, 400, 400);
-            double mse = ImageUtils.calculateMSE(targetImage, generatedImage);
-            double fitness = 1.0 / (mse + 1e-10); // Inverse MSE for fitness
-            individual.setFitness(fitness);
+    private static final double FITNESS_IMPROVEMENT_THRESHOLD = 1e-6; // Adjust as needed
+    private double lastBestFitness = Double.MIN_VALUE; // Initialize to the smallest possible value
 
-            if (bestIndividual == null || individual.getFitness() > bestIndividual.getFitness()) {
-                bestIndividual = individual.copy();
-                // Save intermediate image
-                ImageUtils.saveImage(generatedImage, "output/intermediate.png");
-                System.out.println("New best fitness: " + fitness);
-            }
+    private void evaluateFitness() {
+        List<Callable<Void>> tasks = new ArrayList<>();
+
+        for (Individual individual : population) {
+            tasks.add(() -> {
+                BufferedImage generatedImage = ImageUtils.renderImage(individual, 400, 400);
+                double mse = ImageUtils.calculateMSE(targetImage, generatedImage);
+                double fitness = 1.0 / (mse + 1e-10); // Inverse MSE for fitness
+                individual.setFitness(fitness);
+
+                // Update the best individual atomically
+                bestIndividual.updateAndGet(currentBest -> {
+                    if (currentBest == null || individual.getFitness() > currentBest.getFitness()) {
+                        // Check for significant improvement
+                        if (currentBest == null || (fitness - lastBestFitness) > FITNESS_IMPROVEMENT_THRESHOLD) {
+                            lastBestFitness = fitness;
+                            // Save intermediate image
+                            ImageUtils.saveImage(generatedImage, "output/intermediate.png");
+                            System.out.println("New best fitness: " + fitness);
+                            return individual.copy();
+                        }
+                    }
+                    return currentBest;
+                });
+                return null;
+            });
+        }
+
+        try {
+            executor.invokeAll(tasks);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Fitness evaluation was interrupted.");
         }
     }
 
@@ -112,7 +142,9 @@ public class GeneticAlgorithm {
             System.out.println("Generation: " + generation);
             evaluateFitness();
 
-            List<Individual> newPopulation = new ArrayList<>();
+            List<Individual> newPopulation = Collections.synchronizedList(new ArrayList<>());
+
+            List<Callable<Void>> crossoverTasks = new ArrayList<>();
 
             while (newPopulation.size() < populationSize) {
                 // Selection
@@ -122,19 +154,43 @@ public class GeneticAlgorithm {
                 // Crossover
                 List<Individual> offspring = crossover(parent1, parent2);
 
-                // Mutation
+                // Mutation and add to new population
                 for (Individual child : offspring) {
-                    if (rand.nextDouble() < mutationRate) {
-                        child.mutate();
-                    }
-                    newPopulation.add(child);
+                    crossoverTasks.add(() -> {
+                        if (rand.nextDouble() < mutationRate) {
+                            child.mutate();
+                        }
+                        synchronized (newPopulation) {
+                            newPopulation.add(child);
+                        }
+                        return null;
+                    });
                     if (newPopulation.size() >= populationSize) break;
                 }
             }
 
+            try {
+                executor.invokeAll(crossoverTasks);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Crossover and mutation were interrupted.");
+            }
+
             // Replace old population with new population
-            population.clear();
-            population.addAll(newPopulation);
+            population = newPopulation;
+        }
+
+        // Shutdown the executor service gracefully
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS))
+                    System.err.println("Executor did not terminate.");
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -151,6 +207,6 @@ public class GeneticAlgorithm {
      * @return Best Individual.
      */
     public Individual getBestIndividual() {
-        return bestIndividual;
+        return bestIndividual.get();
     }
 }

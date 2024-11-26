@@ -6,75 +6,30 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Represents a polygon with specific color and shape properties.
+ * Represents a polygon with vertices and color.
  */
 public class Polygon {
-    private static final int MAX_VERTICES = 6; // Maximum number of vertices per polygon
-    private static final int CANVAS_WIDTH = 400; // Canvas width in pixels
-    private static final int CANVAS_HEIGHT = 400; // Canvas height in pixels
-
-    private final List<Point> vertices;
+    private List<Point> vertices;
     private Color color;
-    private final Random rand = new Random();
+    private static final Random rand = new Random();
 
     /**
-     * Initializes a Polygon with random vertices and color.
+     * Initializes a polygon with random vertices and color.
      */
     public Polygon() {
-        this.vertices = new ArrayList<>();
-        initializeRandom();
-    }
-
-    /**
-     * Initializes the polygon with random vertices and color.
-     */
-    private void initializeRandom() {
-        int numVertices = rand.nextInt(MAX_VERTICES - 2) + 3; // Between 3 and MAX_VERTICES
+        vertices = new ArrayList<>();
+        // Initialize with a random number of vertices between 3 and 6
+        int numVertices = rand.nextInt(4) + 3;
         for (int i = 0; i < numVertices; i++) {
-            int x = rand.nextInt(CANVAS_WIDTH);
-            int y = rand.nextInt(CANVAS_HEIGHT);
-            vertices.add(new Point(x, y));
+            vertices.add(new Point(rand.nextInt(400), rand.nextInt(400)));
         }
-        color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256), rand.nextInt(128) + 128); // Semi-transparent
-    }
-
-    /**
-     * Mutates the polygon by altering one vertex or its color.
-     */
-    public void mutate() {
-        if (rand.nextBoolean()) {
-            // Mutate a vertex
-            int vertexIndex = rand.nextInt(vertices.size());
-            Point p = vertices.get(vertexIndex);
-            int dx = rand.nextInt(21) - 10; // Change between -10 and +10
-            int dy = rand.nextInt(21) - 10;
-            p.x = clamp(p.x + dx, CANVAS_WIDTH);
-            p.y = clamp(p.y + dy, CANVAS_HEIGHT);
-        } else {
-            // Mutate color
-            int r = clamp(color.getRed() + rand.nextInt(21) - 10, 255);
-            int g = clamp(color.getGreen() + rand.nextInt(21) - 10, 255);
-            int b = clamp(color.getBlue() + rand.nextInt(21) - 10, 255);
-            int a = clamp(color.getAlpha() + rand.nextInt(21) - 10, 255);
-            color = new Color(r, g, b, a);
-        }
-    }
-
-    /**
-     * Clamps a value between 0 and the specified maximum.
-     *
-     * @param value The value to clamp.
-     * @param max   The maximum allowable value.
-     * @return The clamped value.
-     */
-    private int clamp(int value, int max) {
-        return Math.max(0, Math.min(value, max));
+        color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
     }
 
     /**
      * Gets the list of vertices.
      *
-     * @return List of Points representing the vertices.
+     * @return List of Point objects.
      */
     public List<Point> getVertices() {
         return vertices;
@@ -83,7 +38,7 @@ public class Polygon {
     /**
      * Gets the color of the polygon.
      *
-     * @return Color object representing the polygon's color.
+     * @return Color object.
      */
     public Color getColor() {
         return color;
@@ -92,24 +47,58 @@ public class Polygon {
     /**
      * Sets the color of the polygon.
      *
-     * @param color New color to set.
+     * @param color Color to set.
      */
     public void setColor(Color color) {
         this.color = color;
     }
 
     /**
+     * Mutates the polygon by randomly changing its vertices or color.
+     */
+    public void mutate() {
+        // Randomly decide to mutate vertices or color
+        if (rand.nextBoolean()) {
+            // Mutate a random vertex
+            int vertexIndex = rand.nextInt(vertices.size());
+            Point vertex = vertices.get(vertexIndex);
+            int dx = rand.nextInt(21) - 10; // Change between -10 and +10
+            int dy = rand.nextInt(21) - 10;
+            vertex.setLocation(clamp(vertex.x + dx, 0, 400), clamp(vertex.y + dy, 0, 400));
+        } else {
+            // Mutate color
+            int r = clamp(color.getRed() + rand.nextInt(21) - 10, 0, 255);
+            int g = clamp(color.getGreen() + rand.nextInt(21) - 10, 0, 255);
+            int b = clamp(color.getBlue() + rand.nextInt(21) - 10, 0, 255);
+            int a = clamp(color.getAlpha() + rand.nextInt(21) - 10, 0, 255);
+            color = new Color(r, g, b, a);
+        }
+    }
+
+    /**
      * Creates a deep copy of the polygon.
      *
-     * @return A new Polygon object with copied properties.
+     * @return A new Polygon object with copied vertices and color.
      */
     public Polygon copy() {
         Polygon copy = new Polygon();
-        copy.getVertices().clear(); // Clear default vertices
+        copy.getVertices().clear();
         for (Point p : this.vertices) {
             copy.getVertices().add(new Point(p.x, p.y));
         }
         copy.setColor(new Color(this.color.getRed(), this.color.getGreen(), this.color.getBlue(), this.color.getAlpha()));
         return copy;
+    }
+
+    /**
+     * Utility method to clamp a value between min and max.
+     *
+     * @param value The value to clamp.
+     * @param min   Minimum allowable value.
+     * @param max   Maximum allowable value.
+     * @return Clamped value.
+     */
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

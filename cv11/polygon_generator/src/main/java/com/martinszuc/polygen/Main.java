@@ -25,8 +25,12 @@ public class Main {
             int numPolygons = 50;       // Number of polygons per individual
             double mutationRate = 0.1;  // Mutation probability
 
-            // Initialize the genetic algorithm
-            GeneticAlgorithm ga = new GeneticAlgorithm(targetImage, populationSize, numPolygons, mutationRate);
+            // Determine the number of available processors
+            int availableProcessors = Runtime.getRuntime().availableProcessors();
+            System.out.println("Available processors: " + availableProcessors);
+
+            // Initialize the genetic algorithm with thread pool size equal to available processors
+            GeneticAlgorithm ga = new GeneticAlgorithm(targetImage, populationSize, numPolygons, mutationRate, availableProcessors);
 
             // Add shutdown hook to save the best individual upon termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -54,6 +58,9 @@ public class Main {
             Scanner scanner = new Scanner(System.in);
             scanner.nextLine(); // Wait for user input (e.g., pressing Enter)
             ga.stop();
+
+            // Wait for the evolution thread to finish
+            evolutionThread.join();
 
         } catch (Exception e) {
             e.printStackTrace();
