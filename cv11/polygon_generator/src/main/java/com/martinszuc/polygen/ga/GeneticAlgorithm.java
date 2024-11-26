@@ -3,11 +3,13 @@ package com.martinszuc.polygen.ga;
 import com.martinszuc.polygen.utils.ImageUtils;
 
 import java.awt.image.BufferedImage;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Manages the Genetic Algorithm for evolving individuals to approximate a target image.
@@ -17,13 +19,22 @@ public class GeneticAlgorithm {
     private final int populationSize;
     private final int numPolygons;
     private final double mutationRate;
-    private List<Individual> population;
+    private Individual[] population;
     private final AtomicReference<Individual> bestIndividual = new AtomicReference<>(null);
     private final Random rand = new Random();
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     // ExecutorService for parallel processing
     private final ExecutorService executor;
+    // ExecutorService for image saving
+    private final ExecutorService imageSaverExecutor;
+
+    private static final double FITNESS_IMPROVEMENT_THRESHOLD = 1e-4; // Adjusted threshold
+    private double lastBestFitness = Double.MIN_VALUE; // Initialize to the smallest possible value
+
+    private int generationCount = 0; // Track the generation number
+
+    private static final Logger logger = Logger.getLogger(GeneticAlgorithm.class.getName());
 
     /**
      * Constructor to initialize the genetic algorithm parameters.
@@ -39,46 +50,40 @@ public class GeneticAlgorithm {
         this.populationSize = populationSize;
         this.numPolygons = numPolygons;
         this.mutationRate = mutationRate;
-        this.population = Collections.synchronizedList(new ArrayList<>());
         initializePopulation();
         this.executor = Executors.newFixedThreadPool(threadPoolSize);
+        this.imageSaverExecutor = Executors.newSingleThreadExecutor();
     }
 
     /**
      * Initializes the population with random individuals.
      */
     private void initializePopulation() {
+        this.population = new Individual[populationSize];
         for (int i = 0; i < populationSize; i++) {
-            Individual individual = new Individual(numPolygons);
-            population.add(individual);
+            population[i] = new Individual(numPolygons);
         }
     }
 
     /**
      * Evaluates the fitness of all individuals in the population using parallel processing.
      */
-    private static final double FITNESS_IMPROVEMENT_THRESHOLD = 1e-6; // Adjust as needed
-    private double lastBestFitness = Double.MIN_VALUE; // Initialize to the smallest possible value
-
     private void evaluateFitness() {
         List<Callable<Void>> tasks = new ArrayList<>();
 
         for (Individual individual : population) {
             tasks.add(() -> {
-                BufferedImage generatedImage = ImageUtils.renderImage(individual, 400, 400);
-                double mse = ImageUtils.calculateMSE(targetImage, generatedImage);
-                double fitness = 1.0 / (mse + 1e-10); // Inverse MSE for fitness
+                double fitness = calculateFitness(individual);
                 individual.setFitness(fitness);
 
                 // Update the best individual atomically
                 bestIndividual.updateAndGet(currentBest -> {
-                    if (currentBest == null || individual.getFitness() > currentBest.getFitness()) {
+                    if (currentBest == null || fitness > currentBest.getFitness()) {
                         // Check for significant improvement
                         if (currentBest == null || (fitness - lastBestFitness) > FITNESS_IMPROVEMENT_THRESHOLD) {
                             lastBestFitness = fitness;
-                            // Save intermediate image
-                            ImageUtils.saveImage(generatedImage, "output/intermediate.png");
-                            System.out.println("New best fitness: " + fitness);
+                            saveIntermediateImage(individual, generationCount);
+                            logger.info("New best fitness: " + fitness);
                             return individual.copy();
                         }
                     }
@@ -92,8 +97,38 @@ public class GeneticAlgorithm {
             executor.invokeAll(tasks);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Fitness evaluation was interrupted.");
+            logger.severe("Fitness evaluation was interrupted.");
         }
+    }
+
+    /**
+     * Calculates the fitness of an individual based on the Mean Squared Error (MSE).
+     *
+     * @param individual The individual to evaluate.
+     * @return The fitness value.
+     */
+    private double calculateFitness(Individual individual) {
+        BufferedImage generatedImage = ImageUtils.renderImage(individual);
+        double mse = ImageUtils.calculateMSE(targetImage, generatedImage);
+        // Allow GC to reclaim the image
+        generatedImage.flush();
+        return 1.0 / (mse + 1e-10);
+    }
+
+    /**
+     * Saves the intermediate image of the best individual.
+     *
+     * @param individual     The best individual.
+     * @param generationCount The current generation count.
+     */
+    private void saveIntermediateImage(Individual individual, int generationCount) {
+        imageSaverExecutor.submit(() -> {
+            BufferedImage finalImage = ImageUtils.renderImage(individual);
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
+            String filename = String.format("output/intermediate_gen_%05d_%s.png", generationCount, timestamp);
+            ImageUtils.saveImage(finalImage, filename);
+            logger.info("Image saved to " + filename);
+        });
     }
 
     /**
@@ -103,12 +138,14 @@ public class GeneticAlgorithm {
      */
     private Individual selectParent() {
         int tournamentSize = 5;
-        List<Individual> tournament = new ArrayList<>();
+        Individual best = null;
         for (int i = 0; i < tournamentSize; i++) {
-            Individual randomIndividual = population.get(rand.nextInt(populationSize));
-            tournament.add(randomIndividual);
+            Individual randomIndividual = population[rand.nextInt(populationSize)];
+            if (best == null || randomIndividual.getFitness() > best.getFitness()) {
+                best = randomIndividual;
+            }
         }
-        return tournament.stream().max(Comparator.comparingDouble(Individual::getFitness)).orElse(null);
+        return best;
     }
 
     /**
@@ -125,8 +162,8 @@ public class GeneticAlgorithm {
         // Single-point crossover based on polygons
         int crossoverPoint = rand.nextInt(numPolygons);
         for (int i = crossoverPoint; i < numPolygons; i++) {
-            offspring1.getPolygons().set(i, parent2.getPolygons().get(i).copy());
-            offspring2.getPolygons().set(i, parent1.getPolygons().get(i).copy());
+            offspring1.getPolygons()[i] = parent2.getPolygons()[i].copy();
+            offspring2.getPolygons()[i] = parent1.getPolygons()[i].copy();
         }
 
         return Arrays.asList(offspring1, offspring2);
@@ -139,59 +176,52 @@ public class GeneticAlgorithm {
      */
     public void evolve(int maxGenerations) {
         for (int generation = 1; generation <= maxGenerations && running.get(); generation++) {
-            System.out.println("Generation: " + generation);
+            generationCount = generation;
+            logger.info("Generation: " + generation);
             evaluateFitness();
 
-            List<Individual> newPopulation = Collections.synchronizedList(new ArrayList<>());
+            // Sort population by fitness in descending order
+            Arrays.sort(population, Comparator.comparingDouble(Individual::getFitness).reversed());
 
-            List<Callable<Void>> crossoverTasks = new ArrayList<>();
+            // Retain top 10% as elites
+            int eliteCount = (int) (populationSize * 0.1);
+            Individual[] elites = Arrays.copyOfRange(population, 0, eliteCount);
 
-            while (newPopulation.size() < populationSize) {
-                // Selection
+            // Initialize new population with elites
+            Individual[] newPopulation = new Individual[populationSize];
+            System.arraycopy(elites, 0, newPopulation, 0, eliteCount);
+
+            // Generate the rest of the new population
+            int offspringIndex = eliteCount;
+            while (offspringIndex < populationSize) {
                 Individual parent1 = selectParent();
                 Individual parent2 = selectParent();
 
-                // Crossover
                 List<Individual> offspring = crossover(parent1, parent2);
 
-                // Mutation and add to new population
                 for (Individual child : offspring) {
-                    crossoverTasks.add(() -> {
-                        if (rand.nextDouble() < mutationRate) {
-                            child.mutate();
-                        }
-                        synchronized (newPopulation) {
-                            newPopulation.add(child);
-                        }
-                        return null;
-                    });
-                    if (newPopulation.size() >= populationSize) break;
-                }
-            }
+                    // Mutation
+                    if (rand.nextDouble() < mutationRate) {
+                        child.mutate();
+                    }
 
-            try {
-                executor.invokeAll(crossoverTasks);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                System.err.println("Crossover and mutation were interrupted.");
+                    // Add to new population
+                    if (offspringIndex < populationSize) {
+                        newPopulation[offspringIndex++] = child;
+                    }
+                }
             }
 
             // Replace old population with new population
             population = newPopulation;
+
+            // Log current best fitness
+            Individual currentBest = population[0];
+            logger.info("Current best fitness: " + currentBest.getFitness());
         }
 
-        // Shutdown the executor service gracefully
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-                if (!executor.awaitTermination(60, TimeUnit.SECONDS))
-                    System.err.println("Executor did not terminate.");
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        // Shutdown the executor services gracefully
+        shutdownExecutors();
     }
 
     /**
@@ -208,5 +238,29 @@ public class GeneticAlgorithm {
      */
     public Individual getBestIndividual() {
         return bestIndividual.get();
+    }
+
+    /**
+     * Shuts down the executor services gracefully.
+     */
+    public void shutdownExecutors() {
+        executor.shutdown();
+        imageSaverExecutor.shutdown();
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS))
+                    logger.severe("Executor did not terminate.");
+            }
+            if (!imageSaverExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+                imageSaverExecutor.shutdownNow();
+                if (!imageSaverExecutor.awaitTermination(60, TimeUnit.SECONDS))
+                    logger.severe("Image Saver Executor did not terminate.");
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            imageSaverExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

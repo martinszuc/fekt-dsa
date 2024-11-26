@@ -1,19 +1,21 @@
 package com.martinszuc.polygen.utils;
 
 import com.martinszuc.polygen.ga.Individual;
-import com.martinszuc.polygen.ga.Polygon;
+import com.martinszuc.polygen.ga.PolygonData;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Utility class for image loading, rendering, and fitness calculations.
  */
 public class ImageUtils {
+
+    private static final int IMAGE_WIDTH = 400;
+    private static final int IMAGE_HEIGHT = 400;
 
     /**
      * Loads an image from the specified path.
@@ -47,33 +49,30 @@ public class ImageUtils {
      * Renders an individual to a BufferedImage.
      *
      * @param individual The individual to render.
-     * @param width      The width of the resulting image.
-     * @param height     The height of the resulting image.
      * @return The rendered BufferedImage.
      */
-    public static BufferedImage renderImage(Individual individual, int width, int height) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+    public static BufferedImage renderImage(Individual individual) {
+        BufferedImage image = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
 
-        // Clear the canvas with white background
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, width, height);
+        try {
+            // Clear the canvas with white background
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
 
-        // Render each polygon
-        for (Polygon polygon : individual.getPolygons()) {
-            List<Point> vertices = polygon.getVertices();
-            int n = vertices.size();
-            int[] xPoints = new int[n];
-            int[] yPoints = new int[n];
-            for (int i = 0; i < n; i++) {
-                xPoints[i] = vertices.get(i).x;
-                yPoints[i] = vertices.get(i).y;
+            // Enable anti-aliasing for better quality
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Render each polygon
+            for (PolygonData polygon : individual.getPolygons()) {
+                g.setColor(polygon.getColor());
+
+                g.fillPolygon(polygon.getXPoints(), polygon.getYPoints(), polygon.getNumPoints());
             }
-            g.setColor(polygon.getColor());
-            g.fillPolygon(xPoints, yPoints, n);
+        } finally {
+            g.dispose();
         }
 
-        g.dispose();
         return image;
     }
 

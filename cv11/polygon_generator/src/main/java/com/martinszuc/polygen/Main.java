@@ -6,17 +6,22 @@ import com.martinszuc.polygen.utils.ImageUtils;
 
 import java.awt.image.BufferedImage;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Main class to run the genetic art application.
  */
 public class Main {
+    private static final Logger logger = Logger.getLogger(Main.class.getName());
+
     public static void main(String[] args) {
         try {
             // Load the target image
             BufferedImage targetImage = ImageUtils.loadImage("src/main/resources/input/target_image.png");
             if (targetImage == null) {
-                System.err.println("Failed to load the target image.");
+                logger.severe("Failed to load the target image.");
                 return;
             }
 
@@ -27,29 +32,30 @@ public class Main {
 
             // Determine the number of available processors
             int availableProcessors = Runtime.getRuntime().availableProcessors();
-            System.out.println("Available processors: " + availableProcessors);
+            logger.info("Available processors: " + availableProcessors);
 
             // Initialize the genetic algorithm with thread pool size equal to available processors
             GeneticAlgorithm ga = new GeneticAlgorithm(targetImage, populationSize, numPolygons, mutationRate, availableProcessors);
 
             // Add shutdown hook to save the best individual upon termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("\nShutting down...");
+                logger.info("\nShutting down...");
                 ga.stop();
+                ga.shutdownExecutors();
 
                 Individual best = ga.getBestIndividual();
                 if (best != null) {
-                    BufferedImage finalImage = ImageUtils.renderImage(best, 400, 400);
+                    BufferedImage finalImage = ImageUtils.renderImage(best);
                     ImageUtils.saveImage(finalImage, "output/final_result.png");
-                    System.out.println("Final image saved to output/final_result.png");
+                    logger.info("Final image saved to output/final_result.png");
                 } else {
-                    System.err.println("No best individual found.");
+                    logger.severe("No best individual found.");
                 }
             }));
 
             // Start the evolution process in a separate thread
             Thread evolutionThread = new Thread(() -> {
-                System.out.println("Evolution started. Press Ctrl+C to stop and save the best result.");
+                logger.info("Evolution started. Press Ctrl+C to stop and save the best result.");
                 ga.evolve(1000000); // Set a very high number to run indefinitely
             });
             evolutionThread.start();
@@ -63,7 +69,7 @@ public class Main {
             evolutionThread.join();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "An error occurred during execution.", e);
         }
     }
 }

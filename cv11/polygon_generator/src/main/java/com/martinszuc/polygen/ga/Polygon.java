@@ -1,77 +1,110 @@
 package com.martinszuc.polygen.ga;
 
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.Color;
 import java.util.Random;
 
 /**
  * Represents a polygon with vertices and color.
  */
 public class Polygon {
-    private List<Point> vertices;
-    private Color color;
+    private final int[] xPoints;
+    private final int[] yPoints;
+    private final int numPoints;
+    private int r, g, b, a;
     private static final Random rand = new Random();
 
     /**
      * Initializes a polygon with random vertices and color.
      */
     public Polygon() {
-        vertices = new ArrayList<>();
         // Initialize with a random number of vertices between 3 and 6
-        int numVertices = rand.nextInt(4) + 3;
-        for (int i = 0; i < numVertices; i++) {
-            vertices.add(new Point(rand.nextInt(400), rand.nextInt(400)));
-        }
-        color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
+        this.numPoints = rand.nextInt(4) + 3;
+        this.xPoints = new int[numPoints];
+        this.yPoints = new int[numPoints];
+        initializeRandom();
     }
 
     /**
-     * Gets the list of vertices.
+     * Initializes the polygon with specified vertices and color.
+     * Used for creating copies.
      *
-     * @return List of Point objects.
+     * @param xPoints   Array of x-coordinates.
+     * @param yPoints   Array of y-coordinates.
+     * @param numPoints Number of points.
+     * @param r         Red component.
+     * @param g         Green component.
+     * @param b         Blue component.
+     * @param a         Alpha component.
      */
-    public List<Point> getVertices() {
-        return vertices;
+    public Polygon(int[] xPoints, int[] yPoints, int numPoints, int r, int g, int b, int a) {
+        this.numPoints = numPoints;
+        this.xPoints = new int[numPoints];
+        this.yPoints = new int[numPoints];
+        System.arraycopy(xPoints, 0, this.xPoints, 0, numPoints);
+        System.arraycopy(yPoints, 0, this.yPoints, 0, numPoints);
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
+
+    /**
+     * Initializes the polygon with random vertices and color.
+     */
+    private void initializeRandom() {
+        for (int i = 0; i < numPoints; i++) {
+            xPoints[i] = rand.nextInt(IMAGE_BOUND);
+            yPoints[i] = rand.nextInt(IMAGE_BOUND);
+        }
+        r = rand.nextInt(256);
+        g = rand.nextInt(256);
+        b = rand.nextInt(256);
+        a = rand.nextInt(256);
+    }
+
+    private static final int IMAGE_BOUND = 400; // Assuming image dimensions are 400x400
+
+    /**
+     * Gets the PolygonData object containing all necessary data.
+     *
+     * @return PolygonData object.
+     */
+    public PolygonData getPolygonData() {
+        // Create copies of xPoints and yPoints to prevent external modification
+        int[] xCopy = new int[numPoints];
+        int[] yCopy = new int[numPoints];
+        System.arraycopy(this.xPoints, 0, xCopy, 0, numPoints);
+        System.arraycopy(this.yPoints, 0, yCopy, 0, numPoints);
+        Color color = new Color(r, g, b, a);
+        return new PolygonData(xCopy, yCopy, numPoints, color);
     }
 
     /**
      * Gets the color of the polygon.
      *
-     * @return Color object.
+     * @return AWT Color object.
      */
     public Color getColor() {
-        return color;
-    }
-
-    /**
-     * Sets the color of the polygon.
-     *
-     * @param color Color to set.
-     */
-    public void setColor(Color color) {
-        this.color = color;
+        return new Color(r, g, b, a);
     }
 
     /**
      * Mutates the polygon by randomly changing its vertices or color.
      */
     public void mutate() {
-        // Randomly decide to mutate vertices or color
         if (rand.nextBoolean()) {
             // Mutate a random vertex
-            int vertexIndex = rand.nextInt(vertices.size());
-            Point vertex = vertices.get(vertexIndex);
+            int vertexIndex = rand.nextInt(numPoints);
             int dx = rand.nextInt(21) - 10; // Change between -10 and +10
             int dy = rand.nextInt(21) - 10;
-            vertex.setLocation(clamp(vertex.x + dx, 0, 400), clamp(vertex.y + dy, 0, 400));
+            xPoints[vertexIndex] = clamp(xPoints[vertexIndex] + dx, 0, IMAGE_BOUND);
+            yPoints[vertexIndex] = clamp(yPoints[vertexIndex] + dy, 0, IMAGE_BOUND);
         } else {
             // Mutate color
-            int r = clamp(color.getRed() + rand.nextInt(21) - 10, 0, 255);
-            int g = clamp(color.getGreen() + rand.nextInt(21) - 10, 0, 255);
-            int b = clamp(color.getBlue() + rand.nextInt(21) - 10, 0, 255);
-            int a = clamp(color.getAlpha() + rand.nextInt(21) - 10, 0, 255);
-            color = new Color(r, g, b, a);
+            r = clamp(r + rand.nextInt(21) - 10, 0, 255);
+            g = clamp(g + rand.nextInt(21) - 10, 0, 255);
+            b = clamp(b + rand.nextInt(21) - 10, 0, 255);
+            a = clamp(a + rand.nextInt(21) - 10, 0, 255);
         }
     }
 
@@ -81,13 +114,11 @@ public class Polygon {
      * @return A new Polygon object with copied vertices and color.
      */
     public Polygon copy() {
-        Polygon copy = new Polygon();
-        copy.getVertices().clear();
-        for (Point p : this.vertices) {
-            copy.getVertices().add(new Point(p.x, p.y));
-        }
-        copy.setColor(new Color(this.color.getRed(), this.color.getGreen(), this.color.getBlue(), this.color.getAlpha()));
-        return copy;
+        int[] xCopy = new int[numPoints];
+        int[] yCopy = new int[numPoints];
+        System.arraycopy(this.xPoints, 0, xCopy, 0, numPoints);
+        System.arraycopy(this.yPoints, 0, yCopy, 0, numPoints);
+        return new Polygon(xCopy, yCopy, numPoints, r, g, b, a);
     }
 
     /**

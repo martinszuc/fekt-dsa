@@ -1,15 +1,13 @@
 package com.martinszuc.polygen.ga;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
  * Represents an individual in the population, consisting of multiple polygons.
  */
 public class Individual {
-    private final List<Polygon> polygons;
+    private final PolygonData[] polygons;
     private double fitness;
     private static final Random rand = new Random();
 
@@ -19,31 +17,47 @@ public class Individual {
      * @param numPolygons Number of polygons in the individual.
      */
     public Individual(int numPolygons) {
-        polygons = new ArrayList<>();
+        this.polygons = new PolygonData[numPolygons];
         for (int i = 0; i < numPolygons; i++) {
-            polygons.add(new Polygon());
+            polygons[i] = generateRandomPolygonData();
         }
     }
 
     /**
-     * Private copy constructor for creating an Individual with a list of polygons.
-     * Used in the copy method.
+     * Private constructor for creating a deep copy of an Individual.
      *
-     * @param polygons List of polygons to copy.
+     * @param polygons Array of PolygonData to copy.
      */
-    private Individual(List<Polygon> polygons) {
-        this.polygons = new ArrayList<>(polygons.size());
-        for (Polygon polygon : polygons) {
-            this.polygons.add(polygon.copy());
+    private Individual(PolygonData[] polygons) {
+        this.polygons = new PolygonData[polygons.length];
+        for (int i = 0; i < polygons.length; i++) {
+            PolygonData pd = polygons[i];
+            this.polygons[i] = new PolygonData(
+                    pd.getXPoints(),
+                    pd.getYPoints(),
+                    pd.getNumPoints(),
+                    pd.getColor()
+            );
         }
     }
 
     /**
-     * Gets the list of polygons.
+     * Generates random PolygonData.
      *
-     * @return List of Polygon objects.
+     * @return A new PolygonData object with random data.
      */
-    public List<Polygon> getPolygons() {
+    private PolygonData generateRandomPolygonData() {
+        // Create a temporary Polygon to generate random data
+        Polygon tempPolygon = new Polygon();
+        return tempPolygon.getPolygonData();
+    }
+
+    /**
+     * Gets the array of PolygonData.
+     *
+     * @return Array of PolygonData objects.
+     */
+    public PolygonData[] getPolygons() {
         return polygons;
     }
 
@@ -69,11 +83,73 @@ public class Individual {
      * Mutates the individual by mutating its polygons.
      */
     public void mutate() {
-        for (Polygon polygon : polygons) {
+        for (PolygonData polygon : polygons) {
             if (rand.nextDouble() < 0.1) { // 10% chance to mutate each polygon
-                polygon.mutate();
+                mutatePolygon(polygon);
             }
         }
+    }
+
+    /**
+     * Mutates a single PolygonData object.
+     *
+     * @param polygon The PolygonData to mutate.
+     */
+    private void mutatePolygon(PolygonData polygon) {
+        // Decide whether to mutate vertices or color
+        if (rand.nextBoolean()) {
+            // Mutate a random vertex
+            int vertexIndex = rand.nextInt(polygon.getNumPoints());
+            int[] xPoints = polygon.getXPoints().clone();
+            int[] yPoints = polygon.getYPoints().clone();
+
+            int dx = rand.nextInt(21) - 10; // Change between -10 and +10
+            int dy = rand.nextInt(21) - 10;
+
+            xPoints[vertexIndex] = clamp(xPoints[vertexIndex] + dx, 0, 400);
+            yPoints[vertexIndex] = clamp(yPoints[vertexIndex] + dy, 0, 400);
+
+            // Update polygon data
+            polygons[findPolygonIndex(polygon)].setXPoints(xPoints);
+            polygons[findPolygonIndex(polygon)].setYPoints(yPoints);
+        } else {
+            // Mutate color
+            Color color = polygon.getColor();
+            int r = clamp(color.getRed() + rand.nextInt(21) - 10, 0, 255);
+            int g = clamp(color.getGreen() + rand.nextInt(21) - 10, 0, 255);
+            int b = clamp(color.getBlue() + rand.nextInt(21) - 10, 0, 255);
+            int a = clamp(color.getAlpha() + rand.nextInt(21) - 10, 0, 255);
+
+            // Update polygon data
+            polygons[findPolygonIndex(polygon)].setColor(new Color(r, g, b, a));
+        }
+    }
+
+    /**
+     * Finds the index of a given PolygonData in the polygons array.
+     *
+     * @param polygon The PolygonData to find.
+     * @return Index of the PolygonData, or -1 if not found.
+     */
+    private int findPolygonIndex(PolygonData polygon) {
+        for (int i = 0; i < polygons.length; i++) {
+            if (polygons[i] == polygon) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Clamps a value between min and max.
+     *
+     * @param value The value to clamp.
+     * @param min   Minimum allowable value.
+     * @param max   Maximum allowable value.
+     * @return Clamped value.
+     */
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**
