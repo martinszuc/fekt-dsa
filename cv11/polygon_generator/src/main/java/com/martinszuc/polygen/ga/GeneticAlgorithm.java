@@ -19,6 +19,7 @@ public class GeneticAlgorithm {
     private final int populationSize;
     private final int numPolygons;
     private final double mutationRate;
+    private final String outputFormat; // e.g., "png" or "jpg"
     private Individual[] population;
     private final AtomicReference<Individual> bestIndividual = new AtomicReference<>(null);
     private final Random rand = new Random();
@@ -44,12 +45,14 @@ public class GeneticAlgorithm {
      * @param numPolygons    Number of polygons per individual.
      * @param mutationRate   Mutation probability.
      * @param threadPoolSize Number of threads to use for parallel processing.
+     * @param outputFormat   Desired output image format (e.g., "png", "jpg").
      */
-    public GeneticAlgorithm(BufferedImage targetImage, int populationSize, int numPolygons, double mutationRate, int threadPoolSize) {
+    public GeneticAlgorithm(BufferedImage targetImage, int populationSize, int numPolygons, double mutationRate, int threadPoolSize, String outputFormat) {
         this.targetImage = targetImage;
         this.populationSize = populationSize;
         this.numPolygons = numPolygons;
         this.mutationRate = mutationRate;
+        this.outputFormat = outputFormat.toLowerCase();
         initializePopulation();
         this.executor = Executors.newFixedThreadPool(threadPoolSize);
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
@@ -59,9 +62,11 @@ public class GeneticAlgorithm {
      * Initializes the population with random individuals.
      */
     private void initializePopulation() {
+        int imageWidth = targetImage.getWidth();
+        int imageHeight = targetImage.getHeight();
         this.population = new Individual[populationSize];
         for (int i = 0; i < populationSize; i++) {
-            population[i] = new Individual(numPolygons);
+            population[i] = new Individual(numPolygons, imageWidth, imageHeight);
         }
     }
 
@@ -108,7 +113,7 @@ public class GeneticAlgorithm {
      * @return The fitness value.
      */
     private double calculateFitness(Individual individual) {
-        BufferedImage generatedImage = ImageUtils.renderImage(individual);
+        BufferedImage generatedImage = ImageUtils.renderImage(individual, targetImage.getWidth(), targetImage.getHeight());
         double mse = ImageUtils.calculateMSE(targetImage, generatedImage);
         // Allow GC to reclaim the image
         generatedImage.flush();
@@ -118,15 +123,17 @@ public class GeneticAlgorithm {
     /**
      * Saves the intermediate image of the best individual.
      *
-     * @param individual     The best individual.
+     * @param individual      The best individual.
      * @param generationCount The current generation count.
      */
     private void saveIntermediateImage(Individual individual, int generationCount) {
+        int imageWidth = targetImage.getWidth();
+        int imageHeight = targetImage.getHeight();
         imageSaverExecutor.submit(() -> {
-            BufferedImage finalImage = ImageUtils.renderImage(individual);
+            BufferedImage finalImage = ImageUtils.renderImage(individual, imageWidth, imageHeight);
             String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
-            String filename = String.format("output/intermediate_gen_%05d_%s.png", generationCount, timestamp);
-            ImageUtils.saveImage(finalImage, filename);
+            String filename = String.format("output/intermediate_gen_%05d_%s.%s", generationCount, timestamp, outputFormat);
+            ImageUtils.saveImage(finalImage, filename, outputFormat);
             logger.info("Image saved to " + filename);
         });
     }
@@ -175,6 +182,9 @@ public class GeneticAlgorithm {
      * @param maxGenerations Maximum number of generations to evolve.
      */
     public void evolve(int maxGenerations) {
+        int imageWidth = targetImage.getWidth();
+        int imageHeight = targetImage.getHeight();
+
         for (int generation = 1; generation <= maxGenerations && running.get(); generation++) {
             generationCount = generation;
             logger.info("Generation: " + generation);
@@ -202,7 +212,7 @@ public class GeneticAlgorithm {
                 for (Individual child : offspring) {
                     // Mutation
                     if (rand.nextDouble() < mutationRate) {
-                        child.mutate();
+                        child.mutate(imageWidth, imageHeight);
                     }
 
                     // Add to new population

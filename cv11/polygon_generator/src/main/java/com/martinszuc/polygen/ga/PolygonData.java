@@ -20,8 +20,9 @@ public class PolygonData {
      * @param color     Color of the polygon.
      */
     public PolygonData(int[] xPoints, int[] yPoints, int numPoints, Color color) {
-        this.xPoints = xPoints;
-        this.yPoints = yPoints;
+        // Defensive copying to prevent external modifications
+        this.xPoints = xPoints.clone();
+        this.yPoints = yPoints.clone();
         this.numPoints = numPoints;
         this.color = color;
     }
@@ -32,7 +33,7 @@ public class PolygonData {
      * @return Array of x-coordinates.
      */
     public int[] getXPoints() {
-        return xPoints;
+        return xPoints.clone(); // Return a clone to preserve immutability
     }
 
     /**
@@ -41,7 +42,7 @@ public class PolygonData {
      * @param xPoints New array of x-coordinates.
      */
     public void setXPoints(int[] xPoints) {
-        this.xPoints = xPoints;
+        this.xPoints = xPoints.clone();
     }
 
     /**
@@ -50,7 +51,7 @@ public class PolygonData {
      * @return Array of y-coordinates.
      */
     public int[] getYPoints() {
-        return yPoints;
+        return yPoints.clone(); // Return a clone to preserve immutability
     }
 
     /**
@@ -59,7 +60,7 @@ public class PolygonData {
      * @param yPoints New array of y-coordinates.
      */
     public void setYPoints(int[] yPoints) {
-        this.yPoints = yPoints;
+        this.yPoints = yPoints.clone();
     }
 
     /**

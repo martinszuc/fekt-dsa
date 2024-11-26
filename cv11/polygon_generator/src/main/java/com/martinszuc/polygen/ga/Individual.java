@@ -15,11 +15,13 @@ public class Individual {
      * Initializes an Individual with a specified number of polygons.
      *
      * @param numPolygons Number of polygons in the individual.
+     * @param imageWidth  Width of the image.
+     * @param imageHeight Height of the image.
      */
-    public Individual(int numPolygons) {
+    public Individual(int numPolygons, int imageWidth, int imageHeight) {
         this.polygons = new PolygonData[numPolygons];
         for (int i = 0; i < numPolygons; i++) {
-            polygons[i] = generateRandomPolygonData();
+            polygons[i] = generateRandomPolygonData(imageWidth, imageHeight);
         }
     }
 
@@ -31,24 +33,20 @@ public class Individual {
     private Individual(PolygonData[] polygons) {
         this.polygons = new PolygonData[polygons.length];
         for (int i = 0; i < polygons.length; i++) {
-            PolygonData pd = polygons[i];
-            this.polygons[i] = new PolygonData(
-                    pd.getXPoints(),
-                    pd.getYPoints(),
-                    pd.getNumPoints(),
-                    pd.getColor()
-            );
+            this.polygons[i] = polygons[i].copy(); // Utilize the copy method
         }
     }
 
     /**
      * Generates random PolygonData.
      *
+     * @param imageWidth  Width of the image.
+     * @param imageHeight Height of the image.
      * @return A new PolygonData object with random data.
      */
-    private PolygonData generateRandomPolygonData() {
+    private PolygonData generateRandomPolygonData(int imageWidth, int imageHeight) {
         // Create a temporary Polygon to generate random data
-        Polygon tempPolygon = new Polygon();
+        Polygon tempPolygon = new Polygon(imageWidth, imageHeight);
         return tempPolygon.getPolygonData();
     }
 
@@ -81,11 +79,14 @@ public class Individual {
 
     /**
      * Mutates the individual by mutating its polygons.
+     *
+     * @param imageWidth  Width of the image.
+     * @param imageHeight Height of the image.
      */
-    public void mutate() {
+    public void mutate(int imageWidth, int imageHeight) {
         for (PolygonData polygon : polygons) {
             if (rand.nextDouble() < 0.1) { // 10% chance to mutate each polygon
-                mutatePolygon(polygon);
+                mutatePolygon(polygon, imageWidth, imageHeight);
             }
         }
     }
@@ -93,25 +94,27 @@ public class Individual {
     /**
      * Mutates a single PolygonData object.
      *
-     * @param polygon The PolygonData to mutate.
+     * @param polygon     The PolygonData to mutate.
+     * @param imageWidth  Width of the image.
+     * @param imageHeight Height of the image.
      */
-    private void mutatePolygon(PolygonData polygon) {
+    private void mutatePolygon(PolygonData polygon, int imageWidth, int imageHeight) {
         // Decide whether to mutate vertices or color
         if (rand.nextBoolean()) {
             // Mutate a random vertex
             int vertexIndex = rand.nextInt(polygon.getNumPoints());
-            int[] xPoints = polygon.getXPoints().clone();
-            int[] yPoints = polygon.getYPoints().clone();
+            int[] xPoints = polygon.getXPoints();
+            int[] yPoints = polygon.getYPoints();
 
             int dx = rand.nextInt(21) - 10; // Change between -10 and +10
             int dy = rand.nextInt(21) - 10;
 
-            xPoints[vertexIndex] = clamp(xPoints[vertexIndex] + dx, 0, 400);
-            yPoints[vertexIndex] = clamp(yPoints[vertexIndex] + dy, 0, 400);
+            xPoints[vertexIndex] = clamp(xPoints[vertexIndex] + dx, 0, imageWidth);
+            yPoints[vertexIndex] = clamp(yPoints[vertexIndex] + dy, 0, imageHeight);
 
             // Update polygon data
-            polygons[findPolygonIndex(polygon)].setXPoints(xPoints);
-            polygons[findPolygonIndex(polygon)].setYPoints(yPoints);
+            polygon.setXPoints(xPoints);
+            polygon.setYPoints(yPoints);
         } else {
             // Mutate color
             Color color = polygon.getColor();
@@ -121,23 +124,8 @@ public class Individual {
             int a = clamp(color.getAlpha() + rand.nextInt(21) - 10, 0, 255);
 
             // Update polygon data
-            polygons[findPolygonIndex(polygon)].setColor(new Color(r, g, b, a));
+            polygon.setColor(new Color(r, g, b, a));
         }
-    }
-
-    /**
-     * Finds the index of a given PolygonData in the polygons array.
-     *
-     * @param polygon The PolygonData to find.
-     * @return Index of the PolygonData, or -1 if not found.
-     */
-    private int findPolygonIndex(PolygonData polygon) {
-        for (int i = 0; i < polygons.length; i++) {
-            if (polygons[i] == polygon) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     /**

@@ -18,8 +18,12 @@ public class Main {
 
     public static void main(String[] args) {
         try {
+            // Hardcoded paths and formats
+            String targetImagePath = "src/main/resources/input/target_image.jpg"; // Change to your actual path
+            String outputFormat = "png"; // Set to "png" or "jpg"
+
             // Load the target image
-            BufferedImage targetImage = ImageUtils.loadImage("src/main/resources/input/target_image.png");
+            BufferedImage targetImage = ImageUtils.loadImage(targetImagePath);
             if (targetImage == null) {
                 logger.severe("Failed to load the target image.");
                 return;
@@ -35,7 +39,14 @@ public class Main {
             logger.info("Available processors: " + availableProcessors);
 
             // Initialize the genetic algorithm with thread pool size equal to available processors
-            GeneticAlgorithm ga = new GeneticAlgorithm(targetImage, populationSize, numPolygons, mutationRate, availableProcessors);
+            GeneticAlgorithm ga = new GeneticAlgorithm(
+                    targetImage,
+                    populationSize,
+                    numPolygons,
+                    mutationRate,
+                    availableProcessors,
+                    outputFormat
+            );
 
             // Add shutdown hook to save the best individual upon termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -45,9 +56,10 @@ public class Main {
 
                 Individual best = ga.getBestIndividual();
                 if (best != null) {
-                    BufferedImage finalImage = ImageUtils.renderImage(best);
-                    ImageUtils.saveImage(finalImage, "output/final_result.png");
-                    logger.info("Final image saved to output/final_result.png");
+                    BufferedImage finalImage = ImageUtils.renderImage(best, targetImage.getWidth(), targetImage.getHeight());
+                    String finalFilename = "output/final_result." + outputFormat;
+                    ImageUtils.saveImage(finalImage, finalFilename, outputFormat);
+                    logger.info("Final image saved to " + finalFilename);
                 } else {
                     logger.severe("No best individual found.");
                 }
@@ -62,6 +74,7 @@ public class Main {
 
             // Keep the main thread alive until the user interrupts
             Scanner scanner = new Scanner(System.in);
+            System.out.println("Press Enter to stop the evolution and save the best result.");
             scanner.nextLine(); // Wait for user input (e.g., pressing Enter)
             ga.stop();
 

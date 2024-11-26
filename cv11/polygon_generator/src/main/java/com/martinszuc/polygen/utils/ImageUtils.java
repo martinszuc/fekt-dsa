@@ -14,9 +14,6 @@ import java.io.IOException;
  */
 public class ImageUtils {
 
-    private static final int IMAGE_WIDTH = 400;
-    private static final int IMAGE_HEIGHT = 400;
-
     /**
      * Loads an image from the specified path.
      *
@@ -31,14 +28,15 @@ public class ImageUtils {
     /**
      * Saves a rendered image to the specified path.
      *
-     * @param image The BufferedImage to save.
-     * @param path  The file path where the image will be saved.
+     * @param image  The BufferedImage to save.
+     * @param path   The file path where the image will be saved.
+     * @param format Desired image format (e.g., "png", "jpg").
      */
-    public static void saveImage(BufferedImage image, String path) {
+    public static void saveImage(BufferedImage image, String path, String format) {
         try {
             File outputFile = new File(path);
             outputFile.getParentFile().mkdirs(); // Ensure directories exist
-            ImageIO.write(image, "png", outputFile);
+            ImageIO.write(image, format, outputFile);
             System.out.println("Image saved to " + path);
         } catch (IOException e) {
             e.printStackTrace();
@@ -49,16 +47,18 @@ public class ImageUtils {
      * Renders an individual to a BufferedImage.
      *
      * @param individual The individual to render.
+     * @param width      The width of the image.
+     * @param height     The height of the image.
      * @return The rendered BufferedImage.
      */
-    public static BufferedImage renderImage(Individual individual) {
-        BufferedImage image = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+    public static BufferedImage renderImage(Individual individual, int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
 
         try {
             // Clear the canvas with white background
             g.setColor(Color.WHITE);
-            g.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+            g.fillRect(0, 0, width, height);
 
             // Enable anti-aliasing for better quality
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
