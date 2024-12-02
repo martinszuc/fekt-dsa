@@ -2,6 +2,7 @@ package org.example;
 
 import java.util.Scanner;
 
+// Main Class
 public class Main {
     public static void main(String[] args) {
         Center center = new Center();
@@ -22,11 +23,11 @@ public class Main {
             System.out.println("3. Print tree structure");
             System.out.println("4. Search for a node");
             System.out.println("5. Print Center Mappings");
-            System.out.println("6. Exit");
+            System.out.println("6. Transform to linear linked list");
+            System.out.println("7. Exit");
             System.out.println("---------------------------------------------------------------");
 
-
-            System.out.print("Enter your choice (1-5): ");
+            System.out.print("Enter your choice (1-7): ");
             String input = scanner.nextLine().trim();
 
             // Validate menu choice
@@ -34,7 +35,7 @@ public class Main {
             try {
                 choice = Integer.parseInt(input);
             } catch (NumberFormatException e) {
-                System.out.println("Invalid choice! Please enter a number between 1 and 5.");
+                System.out.println("Invalid choice! Please enter a number between 1 and 7.");
                 continue;
             }
 
@@ -55,7 +56,6 @@ public class Main {
                 case 2:
                     System.out.println("\nIn-order traversal of the tree:");
                     tree.inOrderTraversal();
-                    System.out.println();
                     break;
 
                 case 3:
@@ -81,13 +81,18 @@ public class Main {
                 case 5:
                     center.printMappings();
                     break;
+
                 case 6:
+                    tree.transformToLinkedList();
+                    break;
+
+                case 7:
                     System.out.println("\nExiting the program. Thank you for using the Binary Tree Console Application!");
                     scanner.close();
                     return;
 
                 default:
-                    System.out.println("Invalid choice! Please enter a number between 1 and 5.");
+                    System.out.println("Invalid choice! Please enter a number between 1 and 7.");
             }
         }
     }

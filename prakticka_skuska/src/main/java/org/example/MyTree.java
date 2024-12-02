@@ -3,6 +3,7 @@ package org.example;
 import java.util.ArrayList;
 import java.util.List;
 
+// MyTree Class
 class MyTree {
     private Node root;
     private final Center center;
@@ -29,6 +30,7 @@ class MyTree {
         } else if (value.compareTo(current.value) > 0) {
             current.right = insertRec(current.right, value);
         }
+        // Duplicates are not added to the tree
         return current;
     }
 
@@ -142,6 +144,124 @@ class MyTree {
             System.out.println();
 
             perpiece /= 2;
+        }
+    }
+
+    /**
+     * Transforms the binary tree into a linear one-way linked list.
+     * The transformation follows the order: root -> left -> right.
+     * Displays the transformation process with animation.
+     */
+    public void transformToLinkedList() {
+        if (root == null) {
+            System.out.println("Tree is empty. Cannot transform.");
+            return;
+        }
+
+        System.out.println("\nStarting transformation to a linear linked list...");
+        List<Node> nodes = new ArrayList<>();
+        gatherNodes(root, nodes); // Gather nodes in the order: root, left, right
+
+        List<Node> linkedList = new ArrayList<>();
+
+        // Initialize the linear list with root
+        Node current = nodes.get(0);
+        current.left = null;
+        root = current;
+        linkedList.add(current);
+
+        // Print initial state
+        clearScreen();
+        System.out.println("Transformation Step 0:");
+        System.out.println("Current Tree:");
+        printTree();
+        System.out.println("\nLinear Linked List:");
+        printLinkedList(linkedList);
+        try {
+            Thread.sleep(1000); // Pause for 1 second
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Iterate through the nodes and re-link them
+        for (int i = 1; i < nodes.size(); i++) {
+            Node nextNode = nodes.get(i);
+            current.right = nextNode;
+            nextNode.left = null;
+            current = nextNode;
+            linkedList.add(current);
+
+            // Clear screen
+            clearScreen();
+            // Print current state
+            System.out.println("Transformation Step " + i + ":");
+            System.out.println("Current Tree:");
+            printTree();
+            System.out.println("\nLinear Linked List:");
+            printLinkedList(linkedList);
+
+            // Pause for animation
+            try {
+                Thread.sleep(1000); // Pause for 1 second
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // Final state
+        clearScreen();
+        System.out.println("Transformation completed. Tree is now a linear linked list.");
+        System.out.println("\nFinal Tree:");
+        printTree();
+        System.out.println("\nFinal Linear Linked List:");
+        printLinkedList(linkedList);
+    }
+
+    /**
+     * Helper method to gather nodes in a specific order: root, left, right.
+     */
+    private void gatherNodes(Node current, List<Node> nodes) {
+        if (current == null) {
+            return;
+        }
+
+        nodes.add(current); // Add current node to the list
+        gatherNodes(current.left, nodes); // Process left subtree
+        gatherNodes(current.right, nodes); // Process right subtree
+    }
+
+    /**
+     * Prints the linear linked list in a readable format.
+     *
+     * @param list The list representing the linear linked list.
+     */
+    private void printLinkedList(List<Node> list) {
+        for (Node node : list) {
+            System.out.print(node.value + " -> ");
+        }
+        System.out.println("null");
+    }
+
+    /**
+     * Clears the console screen.
+     * Works on Unix-like systems (including Fedora Linux).
+     */
+    private void clearScreen() {
+        try {
+            // ANSI escape code to clear screen and move cursor to home position
+            System.out.print("\033[H\033[2J");
+            System.out.flush();
+        } catch (Exception e) {
+            System.out.println("Error clearing the screen.");
+        }
+    }
+
+    // Helper method to pause the execution for 1 second
+    private void waitOneSecond() {
+        try {
+            Thread.sleep(1000); // Pause for 1 second (1000 milliseconds)
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
