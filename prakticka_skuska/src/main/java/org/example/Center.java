@@ -3,22 +3,34 @@ package org.example;
 import java.util.ArrayList;
 import java.util.List;
 
+// Center Class
 class Center {
-    private final List<String> memory;
+    private final List<ValueNodePair> nodeList; // List to hold value-node pairs
 
     public Center() {
-        memory = new ArrayList<>();
+        nodeList = new ArrayList<>();
     }
 
-    public void add(String value) {
-        memory.add(value);
+    // Add a value and its corresponding node to the list
+    public void add(String value, Node node) {
+        nodeList.add(new ValueNodePair(value, node));
     }
 
-    public List<String> getAll() {
-        return new ArrayList<>(memory);
+    // Retrieve the node by its value
+    public Node getNode(String value) {
+        for (ValueNodePair pair : nodeList) {
+            if (pair.value.equals(value)) {
+                return pair.node;
+            }
+        }
+        return null; // Return null if not found
     }
 
-    public void printMemory() {
-        System.out.println("Center memory: " + memory);
+    // Print the stored mappings (for debugging)
+    public void printMappings() {
+        System.out.println("Center memory (value to node mappings):");
+        for (ValueNodePair pair : nodeList) {
+            System.out.println("Value: " + pair.value + ", Node: " + pair.node);
+        }
     }
 }
